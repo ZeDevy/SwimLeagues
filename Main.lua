@@ -7,6 +7,7 @@ local autoCloseEnabled = false
 local autoClickEnabled = false
 local autoMachineEnabled = false
 local autoTrainEnabled = false
+local autoClaimEnabled = false
 local clickDelay = 1
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -53,60 +54,90 @@ local function CreateMainUI()
     local MainTab = Window:CreateTab({ Name = "Main" })
     local GameTab = Window:CreateTab({ Name = "Game" })
     local SettingsTab = Window:CreateTab({ Name = "Settings" })
-    local ConsoleTab = Window:CreateTab({ Name = "Console" })
-    Window:ShowTab(ConsoleTab)
-
-    local Row2 = ConsoleTab:Row()
-    ConsoleTab:Separator({ Text = "Run.gm Debug" })
-
-    local Console = ConsoleTab:Console({
-        Text = "<font color='rgb(240, 40, 10)'>[Run.gm] Run.gm Debug</font>",
-        ReadOnly = true,
-        LineNumbers = false,
-        Border = false,
-        Fill = true,
-        Enabled = true,
-        AutoScroll = true,
-        RichText = true,
-        MaxLines = 50
-    })
-
-    Row2:Button({
-        Text = "Clear",
-        Callback = Console.Clear
-    })
-
-    Row2:Button({
-        Text = "Copy",
-        Callback = function()
-            Console:AppendText("<font color='rgb(240, 40, 10)'>[Console Copy] All text copied to clipboard</font>")
-        end,
-    })
-
-    Row2:Button({
-        Text = "Pause",
-        Callback = function(self)
-            local Paused = shared.Pause
-            Paused = not (Paused or false)
-            shared.Pause = Paused
-
-            self.Text = Paused and "Paused" or "Pause"
-            Console.Enabled = not Paused
-            Console:AppendText("<font color='rgb(240, 40, 10)'>[Console Pause] UnPaused</font>")
-        end,
-    })
-
-    Row2:Fill()
 
     local UISettings = SettingsTab:CollapsingHeader({ Title = "UI Settings" })
 
     UISettings:Keybind({
         Label = "ImGui Window Toggle",
-        Value = Enum.KeyCode.M,
+        Value = Enum.KeyCode.Z,
         Callback = function()
             Window:SetVisible(not Window.Visible)
         end,
     })
+
+    local AutoClaimRewards = GameTab:CollapsingHeader({ Title = "Auto Claim Rewards" })
+
+    AutoClaimRewards:RadioButton({
+        Label = "Auto Claim All Quests",
+        Value = false,
+        Callback = function(self, Value)
+            autoClaimEnabled = Value -- Update toggle state
+    
+            if Value then
+                task.spawn(function()
+                    local Player = game.Players.LocalPlayer
+                    local QuestGui = Player:WaitForChild("PlayerGui"):FindFirstChild("QuestGui")
+    
+                    while autoClaimEnabled do
+                        task.wait(0.5)
+    
+                        if QuestGui then
+                            local ListScrollingFrame = QuestGui.ContentFrame.ItemArea.ListArea.ListScrollingFrame
+                            for _, item in pairs(ListScrollingFrame:GetChildren()) do
+                                if item:IsA("Frame") then
+                                    local ClaimBtn = item:FindFirstChild("ContentFrame")
+                                        and item.ContentFrame:FindFirstChild("Normal")
+                                        and item.ContentFrame.Normal:FindFirstChild("ButtonFrame")
+                                        and item.ContentFrame.Normal.ButtonFrame:FindFirstChild("ClaimBtn")
+    
+                                    if ClaimBtn and ClaimBtn:IsA("ImageButton") then
+                                        for _, connection in pairs(getconnections(ClaimBtn.MouseButton1Click)) do
+                                            connection:Fire() -- Fire the button click
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        end,
+    })
+    
+    AutoClaimRewards:RadioButton({
+        Label = "Auto Claim Daily Reward",
+        Value = false,
+        Callback = function(self, Value)
+            autoClaimEnabled = Value -- Update toggle state
+    
+            if Value then
+                task.spawn(function()
+                    local Player = game.Players.LocalPlayer
+                    local DailyRewardGui = Player:WaitForChild("PlayerGui"):FindFirstChild("DailyRewardGui")
+    
+                    while autoClaimEnabled do
+                        task.wait(0.5)
+    
+                        if QuestGui then
+                            local GridScrollingFrame = DailyRewardGui.ContentFrame.ItemArea.GridScrollingFrame
+                            for _, item in pairs(GridScrollingFrame:GetChildren()) do
+                                if item:IsA("Frame") then
+                                    local ClaimBtn = item:FindFirstChild("ContentFrame")
+    
+                                    if ClaimBtn and ClaimBtn:IsA("ImageButton") then
+                                        for _, connection in pairs(getconnections(ClaimBtn.MouseButton1Click)) do
+                                            connection:Fire()
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        end,
+    })    
+
 
     local AutoTrain = GameTab:CollapsingHeader({ Title = "Auto Train" })
 
@@ -222,7 +253,6 @@ local function CreateMainUI()
         end,
     })
     
-    -- Auto Click Radio Button
     Racing:RadioButton({
         Label = "Auto Click (Only For Race)",
         Value = false,
