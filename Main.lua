@@ -7,6 +7,7 @@ local autoCloseEnabled = false
 local autoClickEnabled = false
 local autoMachineEnabled = false
 local autoTrainEnabled = false
+local clickDelay = 1
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
@@ -21,7 +22,7 @@ local function CreateMainUI()
     
     Window = ImGui:CreateWindow({
         Title = "Run.gm",
-        Size = UDim2.new(0, 350, 0, 370),
+        Size = UDim2.new(0, 385, 0, 400),
     })
     Window:Center()
     
@@ -119,7 +120,7 @@ local function CreateMainUI()
         Label = "Auto Train (Legit)",
         Value = false,
         Callback = function(self, Value)
-            autoMachineEnabled = Value -- Update toggle state
+            autoMachineEnabled = Value
     
             if Value then
                 task.spawn(function()
@@ -131,7 +132,7 @@ local function CreateMainUI()
     
                         if MachineUseGui and MachineUseGui.Enabled then
                             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                            task.wait(0.01)
+                            task.wait(clickDelay)
                             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
                         end
                     end
@@ -141,12 +142,24 @@ local function CreateMainUI()
     })
 
     AutoTrain:Keybind({
-        Label = "Auto Train Toggle",
+        Label = "Auto Train Toggle (Legit)",
         Value = Enum.KeyCode.X,
         Callback = function()
             Legit:Toggle()
         end,
     })
+
+    AutoTrain:Slider({
+        Label = "Auto Click Delay (Legit)",
+        CornerRadius = UDim.new(1, 0),
+        Value = clickDelay,
+        MinValue = 0.0,
+        MaxValue = 5,
+        Callback = function(self, Value)
+            clickDelay = Value
+        end,
+    })
+    
 
     AutoTrain:RadioButton({
         Label = "Auto Train (Blatant)",
@@ -198,6 +211,18 @@ local function CreateMainUI()
         end,
     })
 
+    Racing:Slider({
+        Label = "Auto Click Delay",
+        CornerRadius = UDim.new(1, 0),
+        Value = clickDelay, -- Initial value set to 0.05
+        MinValue = 0.0,
+        MaxValue = 5,
+        Callback = function(self, Value)
+            clickDelay = Value
+        end,
+    })
+    
+    -- Auto Click Radio Button
     Racing:RadioButton({
         Label = "Auto Click (Only For Race)",
         Value = false,
@@ -210,12 +235,12 @@ local function CreateMainUI()
                     local MatchGui = Player:WaitForChild("PlayerGui"):FindFirstChild("MatchGui")
     
                     while autoClickEnabled do
-                        task.wait(0.05) -- Adjust click speed
+                        task.wait(0.01) -- Small delay to prevent excessive CPU usage
     
                         if MatchGui and MatchGui.Enabled then
                             -- Simulate a left mouse click
                             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                            task.wait(0.01) -- Small delay to mimic real clicks
+                            task.wait(clickDelay) -- Delay between clicks (updated by the slider)
                             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
                         end
                     end
