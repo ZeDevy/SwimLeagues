@@ -11,6 +11,9 @@ local autoClaimEnabled = false
 local clickDelay = 1
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local Teleports = {}
+local AutoTrain = {}
+
 
 local ImGui = loadstring(game:HttpGet("https://raw.githubusercontent.com/depthso/Roblox-ImGUI/refs/heads/main/ImGui.lua", true))()
 
@@ -53,6 +56,61 @@ local function CreateMainUI()
     local MainTab = Window:CreateTab({ Name = "Main" })
     local GameTab = Window:CreateTab({ Name = "Game" })
     local SettingsTab = Window:CreateTab({ Name = "Settings" })
+    local ConsoleTab = Window:CreateTab({ Name = "Console" })
+    Window:ShowTab(ConsoleTab) 
+    
+    local Row2 = ConsoleTab:Row()
+    
+    ConsoleTab:Separator({
+        Text = "Console Example:"
+    })
+    
+    local Console = ConsoleTab:Console({
+        Text = "Console example",
+        ReadOnly = true,
+        LineNumbers = false,
+        Border = false,
+        Fill = true,
+        Enabled = true,
+        AutoScroll = true,
+        RichText = true,
+        MaxLines = 50
+    })
+    
+    -- Function to print Game ID and Job ID
+    local function PrintGameInfo()
+        local GameId = game.GameId
+        local JobId = game.JobId
+    
+        Console:AppendText("[INFO] Game ID: " .. GameId)
+        Console:AppendText("[INFO] Job ID: " .. JobId)
+    end
+    
+    -- Print game info at startup
+    PrintGameInfo()
+    
+    Row2:Button({
+        Text = "Clear",
+        Callback = function() Console:Clear() end
+    })
+    
+    Row2:Button({
+        Text = "Copy"
+    })
+    
+    Row2:Button({
+        Text = "Pause",
+        Callback = function(self)
+            local Paused = shared.Pause
+            Paused = not (Paused or false)
+            shared.Pause = Paused
+            
+            self.Text = Paused and "Paused" or "Pause"
+            Console.Enabled = not Paused
+        end,
+    })
+    
+    Row2:Fill()    
 
     local UISettings = SettingsTab:CollapsingHeader({ Title = "UI Settings" })
 
@@ -61,6 +119,27 @@ local function CreateMainUI()
         Value = Enum.KeyCode.Z,
         Callback = function()
             Window:SetVisible(not Window.Visible)
+        end,
+    })
+
+    local Teleports = GameTab:CollapsingHeader({ Title = "Teleports" })
+
+    Teleports:Button({
+        Text = "Swim League: World 1",
+        CornerRadius = UDim.new(Radius, 0),
+        Size = UDim2.fromScale(1, 0),
+        Callback = function()
+            local TeleportService = game:GetService("TeleportService")
+            local GameId = 6475810089
+    
+            -- Check if the place is accessible first (helps with error handling)
+            local success, errorMessage = pcall(function()
+                TeleportService:Teleport(GameId, game.Players.LocalPlayer)
+            end)
+    
+            if not success then
+                warn("Teleport failed: " .. errorMessage)
+            end
         end,
     })
 
@@ -78,7 +157,7 @@ local function CreateMainUI()
                     local QuestGui = Player:WaitForChild("PlayerGui"):FindFirstChild("QuestGui")
     
                     while autoClaimEnabled do
-                        task.wait(0.5)
+                        task.wait(0.1)
     
                         if QuestGui then
                             local ListScrollingFrame = QuestGui.ContentFrame.ItemArea.ListArea.ListScrollingFrame
@@ -115,7 +194,7 @@ local function CreateMainUI()
                     local DailyRewardGui = Player:WaitForChild("PlayerGui"):FindFirstChild("DailyRewardGui")
     
                     while autoClaimEnabled do
-                        task.wait(0.5)
+                        task.wait(0.1)
     
                         if QuestGui then
                             local GridScrollingFrame = DailyRewardGui.ContentFrame.ItemArea.GridScrollingFrame
@@ -208,6 +287,66 @@ local function CreateMainUI()
             end
         end,
     })
+
+    local function autoTrainLegit()
+        local Player = game.Players.LocalPlayer
+        local MachineUseGui = Player:WaitForChild("PlayerGui"):FindFirstChild("MachineUseGui")
+        local clickDelay = 0.01  -- Adjust for speed
+    
+        while autoMachineEnabled do
+            task.wait(0.01)
+    
+            if MachineUseGui and MachineUseGui.Enabled then
+                -- Simulate a mouse click
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                task.wait(clickDelay)
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+            end
+        end
+    end
+    
+    -- Function to simulate firing remote for Blatant Mode
+    local function autoTrainBlatant()
+        while autoTrainEnabled do
+            task.wait()
+            game:GetService("ReplicatedStorage"):WaitForChild("Train"):WaitForChild("Remote"):WaitForChild("TrainAnimeHasEnded"):FireServer()
+        end
+    end
+    
+    -- Combine both AutoTrain modes
+    local ATV2 = AutoTrain:RadioButton({
+        Label = "Auto Train (Legit & Blatant)",
+        Value = false,
+        Callback = function(self, Value)
+            autoMachineEnabled = Value
+            autoTrainEnabled = Value
+    
+            if Value then
+                -- Hide the window and lock mouse
+                Window:SetVisible(false)
+                game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.LockCenter
+                game:GetService("UserInputService").MouseIconEnabled = false
+    
+                -- Start both auto modes concurrently
+                task.spawn(autoTrainLegit)
+                task.spawn(autoTrainBlatant)
+            else
+                -- Unlock mouse and show window when turned off
+                Window:SetVisible(true)
+                game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.Default
+                game:GetService("UserInputService").MouseIconEnabled = true
+            end
+        end,
+    })
+
+    AutoTrain:Keybind({
+        Label = "Auto Train (Legit & Blatant)",
+        Value = Enum.KeyCode.V,
+        Callback = function()
+            ATV2:Toggle()
+        end,
+    })
+
 
     local Racing = GameTab:CollapsingHeader({ Title = "Racing" })
 
