@@ -8,6 +8,7 @@ local autoClickEnabled = false
 local autoMachineEnabled = false
 local autoTrainEnabled = false
 local autoClaimEnabled = false
+local autoAscendEnabled = false
 local clickDelay = 1
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -216,7 +217,84 @@ local function CreateMainUI()
         end,
     })    
 
+    local AutoAscend = GameTab:CollapsingHeader({ Title = "Auto Ascend" })
 
+    AutoAscend:RadioButton({
+        Label = "Auto Ascend",
+        Value = false,
+        Callback = function(self, Value)
+            autoAscendEnabled = Value
+    
+            if Value then
+                task.spawn(function()
+                    local player = game.Players.LocalPlayer
+                    local trainInfo = player.Configuration:WaitForChild("TrainValueInfo")
+                    local ascendButton = player.PlayerGui.RebirthGui.Content.ContentFrame.Show.RightArea.LevelArea.AscendButton
+                    local gainArea = player.PlayerGui.RebirthGui.Content.ContentFrame.Show.RightArea.GainArea
+                    local machines = Workspace.TrainMachineModelGroup:GetChildren()
+    
+                    local muscleMap = {
+                        ["Chest"] = "1",
+                        ["Back"] = "2",
+                        ["Abdomen"] = "3",
+                        ["Legs"] = "4",
+                        ["Arms"] = "5"
+                    }
+    
+                    local machineMap = {
+                        ["1"] = "PectoralesInstrument_1", -- Chest
+                        ["2"] = "BackInstrument_1",      -- Back
+                        ["3"] = "AbdominalInstrument_1", -- Abs
+                        ["4"] = "LegInstrument_1",      -- Legs
+                        ["5"] = "ArmInstrument_1"       -- Arms
+                    }
+    
+                    while autoAscendEnabled do
+                        task.wait(0.1) -- Small delay to prevent lag
+    
+                        local canAscend = false
+    
+                        for muscle, attrIndex in pairs(muscleMap) do
+                            local muscleValue = trainInfo:GetAttribute(attrIndex) or 0
+                            local numText = gainArea:FindFirstChild(muscle) and gainArea[muscle].Bar.NumText.Text
+    
+                            if numText then
+                                local current, required = numText:match("(%d+)/(%d+)")
+                                current, required = tonumber(current), tonumber(required)
+    
+                                if current and required and muscleValue >= required then
+                                    canAscend = true
+                                    break
+                                end
+                            end
+                        end
+    
+                        if canAscend then
+                            -- Trigger MouseButton1Click for ascendButton using the same logic as your example
+                            if ascendButton and ascendButton:IsA("ImageButton") then
+                                for _, connection in pairs(getconnections(ascendButton.MouseButton1Click)) do
+                                    connection:Fire()
+                                end
+                            end
+                        else
+                            for muscle, attrIndex in pairs(muscleMap) do
+                                for _, machine in ipairs(machines) do
+                                    if machine.Name == machineMap[attrIndex] and machine:FindFirstChild("ExerciseT") then
+                                        local prompt = machine.MachineInfo.MachineInfo.AttachUIPartAttachment.ProximityPrompt
+                                        if prompt then
+                                            fireproximityprompt(prompt)
+                                        end
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        end,
+    })
+    
     local AutoTrain = GameTab:CollapsingHeader({ Title = "Auto Train" })
 
     AutoTrain:Label({
@@ -268,20 +346,21 @@ local function CreateMainUI()
             clickDelay = Value
         end,
     })
-    
 
-    AutoTrain:RadioButton({
+    local function setupAutoTrain()
+        game:GetService("ReplicatedStorage"):WaitForChild("Train"):WaitForChild("Remote"):WaitForChild("TrainAnimeHasEnded"):FireServer()
+    end
+    
+     AutoTrain:RadioButton({
         Label = "Auto Train (Blatant)",
         Value = false,
         Callback = function(self, Value)
             autoTrainEnabled = Value
-    
             if Value then
                 task.spawn(function()
                     while autoTrainEnabled do
                         task.wait()
-    
-                        game:GetService("ReplicatedStorage"):WaitForChild("Train"):WaitForChild("Remote"):WaitForChild("TrainAnimeHasEnded"):FireServer()
+                        setupAutoTrain()
                     end
                 end)
             end
